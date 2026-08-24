@@ -389,6 +389,17 @@
         <button type="button" data-regime="real">Lucro Real</button>
       </div>
 
+      <div class="field" id="regimeIbsField" style="margin-top:14px;">
+        <label>Qual o seu regime de tributação no IBS/CBS?</label>
+        <div class="regime-toggle" id="regimeIbsToggle" style="margin-bottom:6px;">
+          <button type="button" data-ibsregime="regular" class="active">Regular</button>
+          <button type="button" data-ibsregime="dif60">Diferenciado 60%</button>
+          <button type="button" data-ibsregime="dif30">Diferenciado 30%</button>
+          <button type="button" data-ibsregime="especifico">Específico</button>
+        </div>
+        <div class="field-note" id="regimeIbsNote">Regular: alíquota cheia. Diferenciado 60%: você paga só 40% da alíquota — saúde, educação, medicamentos, alimentos, insumos agropecuários (art. 128, LC 214/2025). Diferenciado 30%: você paga 70% da alíquota — profissões intelectuais regulamentadas (advocacia, contabilidade, engenharia, medicina). Específico: regras próprias (ex: financeiro, imobiliário, combustíveis) — esse caso foge do que este simulador calcula bem.</div>
+      </div>
+
       <div class="grid2">
         <div class="field">
           <label for="descricao" id="descricaoLabel">O que você vende</label>
@@ -532,7 +543,7 @@
       </div>
 
       <div class="schedule-note">
-        Estimativa com base no cronograma da LC 214/2025. 2026 é ano de teste (CBS 0,9% / IBS 0,1%, compensados, sem impacto de caixa). Em 2027 o PIS/COFINS é extinto e a CBS passa a valer de fato — usamos 9,2% de referência. De 2029 a 2032 o IBS substitui gradualmente o ICMS/ISS (10% ao ano), usando a alíquota de referência nacional de 18,7% — a mesma para qualquer empresa, não uma conta sobre o seu ICMS ou ISS atual — até a extinção do ICMS/ISS em 2033. Os números 9,2% e 18,7% vêm da Resolução CGIBS nº 14, de 29/07/2026, ainda pendente de aprovação definitiva pelo Senado — setores com regime reduzido (saúde, educação, profissões regulamentadas) pagam menos. Para o Simples Nacional, o regime padrão mantém a carga do DAS inalterada (art. 516 da LC 123/2006, preservado pela LC 214/2025); o regime híbrido (art. 41, §3º) retira o IBS/CBS do DAS para apuração separada, pela mesma alíquota de referência, com crédito integral ao cliente PJ. Todas as alíquotas são editáveis e devem ser confirmadas com o seu contador.
+        Estimativa com base no cronograma da LC 214/2025. 2026 é ano de teste (CBS 0,9% / IBS 0,1%, compensados, sem impacto de caixa). Em 2027 o PIS/COFINS é extinto e a CBS passa a valer de fato — usamos 9,2% de referência. De 2029 a 2032 o IBS substitui gradualmente o ICMS/ISS (10% ao ano), usando a alíquota de referência nacional de 18,7% — a mesma para qualquer empresa no regime regular, não uma conta sobre o seu ICMS ou ISS atual — até a extinção do ICMS/ISS em 2033. Os números 9,2% e 18,7% vêm da Resolução CGIBS nº 14, de 29/07/2026, ainda pendente de aprovação definitiva pelo Senado. Quem está em regime diferenciado paga menos: 40% da alíquota para saúde, educação, medicamentos e alimentos (art. 128, LC 214/2025), ou 70% para profissões intelectuais regulamentadas — escolha o seu regime no campo acima. Para o Simples Nacional, o regime padrão mantém a carga do DAS inalterada (art. 516 da LC 123/2006, preservado pela LC 214/2025); o regime híbrido (art. 41, §3º) retira o IBS/CBS do DAS para apuração separada, pela mesma alíquota de referência (ajustada pelo regime diferenciado, se aplicável), com crédito integral ao cliente PJ. Todas as alíquotas são editáveis e devem ser confirmadas com o seu contador.
       </div>
 
       <div class="disclaimer">Este simulador é uma estimativa simplificada para fins educativos e não substitui a análise de um especialista. Fale com a Pretorian para um diagnóstico completo do seu caso.</div>
@@ -570,7 +581,12 @@
   };
   var yearIndex = 1; // default 2027
 
-  var state = { regime:'simples', simplesMode:'padrao', tipo:'servico' };
+  var state = { regime:'simples', simplesMode:'padrao', tipo:'servico', ibsRegime:'regular' };
+  function ibsRegimeMultiplier(){
+    if(state.ibsRegime === 'dif60') return 0.40;
+    if(state.ibsRegime === 'dif30') return 0.70;
+    return 1.0; // regular (e ponto de partida para 'especifico', tratado à parte na exibição)
+  }
   var fmtBRL = new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
   var fmtPct = function(v){ return (v*100).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:2}) + '%'; };
 
@@ -664,6 +680,16 @@
     });
   });
 
+  var ibsRegimeBtns = document.querySelectorAll('#regimeIbsToggle button');
+  ibsRegimeBtns.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      ibsRegimeBtns.forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+      state.ibsRegime = btn.getAttribute('data-ibsregime');
+      compute();
+    });
+  });
+
   function toggleFields(){
     try { toggleFieldsInner(); } catch(errToggle){ console.error('toggleFields() failed', errToggle); }
   }
@@ -680,6 +706,9 @@
     document.querySelector('.pcCompraField').classList.toggle('hidden', isSimples);
 
     document.getElementById('simplesModeField').classList.toggle('hidden', !isSimples);
+    // O regime diferenciado/específico só se aplica a quem apura IBS/CBS por fora: Presumido, Real, ou Simples híbrido.
+    var applicaRegimeIbs = !isSimples || (isSimples && state.simplesMode === 'hibrido');
+    document.getElementById('regimeIbsField').classList.toggle('hidden', !applicaRegimeIbs);
     document.querySelectorAll('.hibridoFields').forEach(function(el){
       el.classList.toggle('hidden', !(isSimples && state.simplesMode === 'hibrido'));
     });
@@ -790,15 +819,17 @@
       var remanescente = dasTotal * (1 - pcFracao - icmsFracaoDAS); // IRPJ, CSLL, CPP etc. — o que sobra no DAS reduzido
       // CBS e IBS no híbrido seguem a mesma alíquota de referência nacional de quem já é Real/Presumido —
       // não são derivados da sua fatia de DAS, que só define o que sai da guia unificada.
-      var ibsH = IBS_PLENO * meta.ibsRamp;
-      var cbsH = meta.cbs;
+      var regimeMultH = ibsRegimeMultiplier();
+      var ibsH = IBS_PLENO * meta.ibsRamp * regimeMultH;
+      var cbsH = meta.cbs * regimeMultH;
       var porDentroH = remanescente;
       return { porDentro: porDentroH, das: remanescente, cbs: cbsH, ibs: ibsH, icms: 0, pcApplies: false, mode:'hibrido' };
     }
     var icmsAtual = num('icmsVenda')/100;
     var icmsEfetivo = meta.real ? icmsAtual * (1 - meta.icmsRamp) : icmsAtual;
-    var ibs = meta.real ? IBS_PLENO * meta.ibsRamp : 0;
-    var cbs = meta.real ? meta.cbs : 0;
+    var regimeMult = ibsRegimeMultiplier();
+    var ibs = meta.real ? IBS_PLENO * meta.ibsRamp * regimeMult : 0;
+    var cbs = meta.real ? meta.cbs * regimeMult : 0;
     var pcApplies = !meta.pcExtinct;
     // Only taxes that still compose their own base ("por dentro") enter the pricing formula.
     // CBS and IBS are excluded from the base by law (LC 214/2025, art. 12, §2º, I) — they are
@@ -920,7 +951,14 @@
     var big = document.getElementById('impactBig');
     var small = document.getElementById('impactSmall');
 
-    if(Math.abs(deltaPreco) < 0.01){
+    var isEspecifico = state.ibsRegime === 'especifico' && (isGeral || isHibrido);
+
+    if(isEspecifico){
+      box.className = 'impact';
+      icon.textContent = '?';
+      big.textContent = 'Seu setor tem regra própria — este simulador não calcula esse caso direito';
+      small.textContent = 'Regimes específicos (financeiro, imobiliário, combustíveis, planos de saúde e outros) seguem cálculo próprio na LC 214/2025, não a redução percentual dos regimes diferenciados. O número certo pra você depende de olhar o seu caso com um especialista.';
+    } else if(Math.abs(deltaPreco) < 0.01){
       box.className = 'impact';
       icon.textContent = '=';
       big.textContent = 'Impacto neutro nesse cenário';
