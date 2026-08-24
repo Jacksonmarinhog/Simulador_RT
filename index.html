@@ -857,8 +857,8 @@
     var reformRate = reformScenarioRate(atualRate);
 
     var precoVenda;
+    var margem = num('margem')/100;
     if(marginDriven || document.getElementById('precoVenda').value === ''){
-      var margem = num('margem')/100;
       var denom = 1 - atualRate.total - margem;
       precoVenda = denom > 0 ? custoFinal / denom : 0;
       document.getElementById('precoVenda').value = precoVenda ? precoVenda.toFixed(2) : '';
