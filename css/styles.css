@@ -41,7 +41,20 @@ body{
   color:var(--charcoal);
   -webkit-font-smoothing:antialiased;
   caret-color:var(--gold-deep);
+  /* coluna flex para o corpo esticar e o rodape assentar no fim da tela,
+     mesmo quando a pagina tem pouco conteudo (estado do gate) */
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
 }
+header.top, footer.site-foot{flex:0 0 auto;}
+/* Quem absorve a sobra vertical depende do estado da pagina: no gate e o hero
+   (o preto vai ate o rodape); com o simulador aberto o hero some e a sobra
+   passa para o corpo. Sem isso, a casca vazia do simulador virava uma faixa
+   clara de ~235px entre o hero e o copyright. */
+.hero{flex:1 0 auto;}
+.sim-shell{flex:0 0 auto;}
+.sim-shell:has(.sim-section.active){flex:1 0 auto;}
 
 /* superfícies do navegador que também são design */
 ::selection{background:rgba(224,199,130,0.42);color:var(--black);}
@@ -52,25 +65,37 @@ body{
 .result-scroll::-webkit-scrollbar-thumb{background:#d6d1c4;border-radius:99px;border:3px solid var(--white);}
 .result-scroll::-webkit-scrollbar-thumb:hover{background:#c2bcab;}
 
+/* Um unico trilho para header, hero e simulador: 1376px de conteudo com 32px
+   de folga lateral. Todos comecam no mesmo x. */
+:root{
+  --track:1376px;
+  --gutter:var(--s7);
+  --h1-size:clamp(30px,3.6vw,46px);
+}
+
 /* ---------- Header ---------- */
 header.top{
   background:var(--black);
-  padding:var(--s4) var(--s5);
+  padding:var(--s4) var(--gutter);
 }
 .top-inner{
-  max-width:1376px;margin:0 auto;
-  display:flex;align-items:center;gap:var(--s3);
+  max-width:var(--track);margin:0 auto;
+  display:flex;align-items:center;justify-content:center;gap:var(--s3);
 }
+/* Sem height no header: ele e o resultado de padding + logo.
+   Aumentar o logo aumenta o header (16 + 44 + 16 = 76px). */
 .logo-img{
-  height:34px;width:auto;display:block;
+  height:44px;width:auto;display:block;
 }
 
 /* ---------- Hero / gate ---------- */
 .hero{
   background:var(--black);
-  padding:var(--s9) var(--s5) calc(var(--s9) + var(--s5));
+  padding:var(--s8) var(--gutter) var(--s9);
   position:relative;
   overflow:hidden;
+  /* centra o bloco quando o hero cresce para ocupar a tela no estado de gate */
+  display:flex;align-items:center;
 }
 .hero::after{
   content:"";position:absolute;inset:auto -10% -55% 45%;
@@ -79,16 +104,22 @@ header.top{
   pointer-events:none;
 }
 .hero-inner{
-  max-width:1200px;margin:0 auto;position:relative;z-index:2;
+  max-width:var(--track);width:100%;margin:0 auto;position:relative;z-index:2;
 }
+/* 12 colunas: a copy ocupa 1-6, o card de captura fecha em 9-12.
+   align-items:center deixa os dois blocos centrados um no outro. */
 .hero-grid{
-  display:grid;grid-template-columns:minmax(0,1.15fr) 420px;
-  gap:var(--s9);align-items:start;
+  display:grid;grid-template-columns:repeat(12,minmax(0,1fr));
+  gap:var(--s6);align-items:center;
 }
+.hero-copy{grid-column:1 / span 6;}
+/* 8-12 (5 colunas): o card cresce de 443 para 559px e o vao central cai de
+   257 para 141px, mantendo a coluna 7 como respiro entre texto e formulario. */
+.gate-card{grid-column:8 / span 5;}
 h1.hero-title{
   font-family:var(--font-display);
   font-weight:800;
-  font-size:clamp(30px,3.6vw,46px);
+  font-size:var(--h1-size);
   line-height:1.08;
   letter-spacing:-0.02em;
   color:var(--white);
@@ -98,15 +129,17 @@ h1.hero-title{
 h1.hero-title em{
   font-style:normal;color:var(--gold);
 }
+/* sem max-width: o texto preenche ate a borda direita da coluna 6, fechando o
+   vao que sobrava no meio do hero */
 .hero-sub{
   font-size:17px;line-height:1.6;color:#c8c8c8;
-  max-width:56ch;margin:0 0 var(--s7);
+  margin:0 0 var(--s7);
 }
 
 .fear-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--s4);}
 .fear-list li{
   display:flex;gap:var(--s3);align-items:flex-start;
-  color:#d8d8d8;font-size:14.5px;line-height:1.55;max-width:60ch;
+  color:#d8d8d8;font-size:14.5px;line-height:1.55;
 }
 .fear-list .ic{
   flex:none;width:20px;height:20px;margin-top:2px;color:var(--gold);
@@ -225,7 +258,12 @@ h1.hero-title em{
 .hibrido-legal{font-size:12px;color:var(--gray-soft);font-style:italic;}
 
 /* ---------- Estrutura do simulador ---------- */
-.sim-shell{max-width:1440px;margin:0 auto;padding:0 var(--s7) var(--s7);}
+/* Mesmo trilho do header e do hero. O flex fica declarado la em cima, junto
+   com as regras de quem absorve a sobra vertical. */
+.sim-shell{
+  max-width:calc(var(--track) + var(--gutter) * 2);
+  width:100%;margin:0 auto;padding:0 var(--gutter) 0;
+}
 .sim-section{padding:var(--s8) 0 0;display:none;}
 .sim-section.active{display:block;}
 
@@ -350,7 +388,9 @@ p.sec-sub{color:var(--gray);font-size:14.5px;margin:0;line-height:1.55;max-width
 }
 
 /* ---------- Notas e CTA ---------- */
-.sim-notes{margin-top:var(--s8);}
+/* padding-bottom separa o CTA preto do rodape, agora tambem preto — sem ele os
+   dois viram uma mancha escura unica no fim da pagina */
+.sim-notes{margin-top:var(--s8);padding-bottom:var(--s7);}
 .explainer.wide{border-top:1px solid var(--line);max-width:860px;}
 .schedule-note{max-width:75ch;}
 .disclaimer{
@@ -369,26 +409,38 @@ p.sec-sub{color:var(--gray);font-size:14.5px;margin:0;line-height:1.55;max-width
 .cta-final p{color:#bdbdbd;font-size:14px;margin:0 0 var(--s5);line-height:1.55;}
 .cta-final .btn-primary{max-width:340px;margin:0 auto;}
 
+/* Rodape escuro de ponta a ponta; o filete de topo vive no filho, entao ele
+   mede exatamente a largura do trilho e nao da tela.
+   Sem height declarado: a altura sai de line-height + padding (18 + 32 + 32). */
 footer.site-foot{
-  text-align:center;padding:var(--s4) var(--s5);color:#737370;font-size:12px;
-  line-height:1.5;
+  background:var(--black);
+  margin:0;padding:0 var(--gutter);
+}
+.foot-inner{
+  max-width:var(--track);margin:0 auto;
+  padding:var(--s7) 0;
+  border-top:1px solid rgba(255,255,255,0.16);
+  text-align:center;color:var(--white);font-size:12px;line-height:1.5;
 }
 
 .hidden{display:none !important;}
 
 /* ---------- Adaptação ---------- */
 @media(max-width:1240px){
+  /* uma folga menor move header, hero e simulador juntos — eles compartilham o token */
+  :root{--gutter:var(--s6);}
   .sim-grid{grid-template-columns:minmax(0,1fr) 460px;gap:var(--s6);}
-  .sim-shell{padding:0 var(--s6) var(--s6);}
 }
 
 @media(max-width:1080px){
   .hero-grid{grid-template-columns:1fr;gap:var(--s7);}
-  .gate-card{max-width:460px;}
+  .hero-copy, .gate-card{grid-column:1 / -1;}
+  /* empilhado nao ha o que alinhar opticamente */
+  .gate-card{max-width:460px;margin-top:0;}
   .sim-grid{grid-template-columns:1fr;gap:var(--s6);}
   .sim-result{
     position:static;
-    margin:0 calc(var(--s6) * -1);
+    margin:0 calc(var(--gutter) * -1);
   }
   .result-panel{
     position:sticky;top:auto;bottom:0;z-index:20;
@@ -402,9 +454,9 @@ footer.site-foot{
 }
 
 @media(max-width:680px){
-  .sim-shell{padding:0 var(--s4) var(--s6);}
-  .hero{padding:var(--s7) var(--s4) var(--s8);}
-  .sim-result{margin:0 calc(var(--s4) * -1);}
+  :root{--gutter:var(--s4);}
+  .hero{padding:var(--s7) var(--gutter) var(--s8);}
+  .sim-result{margin:0 calc(var(--gutter) * -1);}
   .results-grid{gap:var(--s2);}
   .rcard{padding:var(--s3);}
   .rline{font-size:12px;}
