@@ -257,6 +257,12 @@
   .lucro-val.bad{color:var(--danger);}
   .margem-tag{font-size:12.5px;color:var(--gray);margin-top:3px;}
 
+  .margem-warning{
+    background:var(--danger-tint);border:1.5px solid var(--danger);border-radius:8px;
+    padding:13px 16px;margin:0 0 18px;font-size:13.5px;line-height:1.5;color:var(--danger);
+  }
+  .margem-warning.hidden{display:none;}
+
   /* Impact reveal */
   .impact{
     margin-top:20px;border-radius:var(--radius);padding:24px 26px;
@@ -484,6 +490,8 @@
       <div class="step-tag">Resultado</div>
       <h2 class="sec-title">Seu lucro, antes e depois</h2>
       <p class="sec-sub">O preço de venda é o mesmo nos dois cenários — o que muda é a carga tributária. É exatamente isso que costuma pegar o empresário de surpresa.</p>
+
+      <div class="margem-warning hidden" id="margemWarning"></div>
 
       <div class="year-switcher">
         <button type="button" id="yearPrev" aria-label="Ano anterior">‹</button>
@@ -858,8 +866,10 @@
 
     var precoVenda;
     var margem = num('margem')/100;
-    if(marginDriven || document.getElementById('precoVenda').value === ''){
-      var denom = 1 - atualRate.total - margem;
+    var atualDrivenByMargin = marginDriven || document.getElementById('precoVenda').value === '';
+    var denom = 1 - atualRate.total - margem;
+    var atualInvalid = atualDrivenByMargin && denom <= 0;
+    if(atualDrivenByMargin){
       precoVenda = denom > 0 ? custoFinal / denom : 0;
       document.getElementById('precoVenda').value = precoVenda ? precoVenda.toFixed(2) : '';
     } else {
@@ -871,26 +881,27 @@
     var aLucro = precoVenda - custoFinal - aImpostos;
     var aMargem = precoVenda > 0 ? aLucro / precoVenda : 0;
 
-    document.getElementById('a-preco').textContent = fmtBRL.format(precoVenda||0);
+    document.getElementById('a-preco').textContent = atualInvalid ? '—' : fmtBRL.format(precoVenda||0);
     document.getElementById('a-custo').textContent = fmtBRL.format(custoFinal);
-    document.getElementById('a-impostos').textContent = fmtBRL.format(aImpostos);
-    document.getElementById('a-lucro').textContent = fmtBRL.format(aLucro);
-    document.getElementById('a-lucro').className = 'lucro-val ' + (aLucro >= 0 ? 'good' : 'bad');
-    document.getElementById('a-margem').textContent = 'margem ' + fmtPct(aMargem);
+    document.getElementById('a-impostos').textContent = atualInvalid ? '—' : fmtBRL.format(aImpostos);
+    document.getElementById('a-lucro').textContent = atualInvalid ? '—' : fmtBRL.format(aLucro);
+    document.getElementById('a-lucro').className = 'lucro-val ' + (atualInvalid ? '' : (aLucro >= 0 ? 'good' : 'bad'));
+    document.getElementById('a-margem').textContent = atualInvalid ? 'margem —' : 'margem ' + fmtPct(aMargem);
 
     var showDas = state.regime === 'simples';
     document.getElementById('a-line-das').classList.toggle('hidden', !showDas);
     document.getElementById('a-line-icms').classList.toggle('hidden', showDas);
     document.getElementById('a-line-pc').classList.toggle('hidden', showDas);
     if(showDas){
-      document.getElementById('a-das').textContent = fmtBRL.format(precoVenda*atualRate.das) + ' ('+fmtPct(atualRate.das)+')';
+      document.getElementById('a-das').textContent = atualInvalid ? '—' : fmtBRL.format(precoVenda*atualRate.das) + ' ('+fmtPct(atualRate.das)+')';
     } else {
-      document.getElementById('a-icms').textContent = fmtBRL.format(precoVenda*atualRate.icms) + ' ('+fmtPct(atualRate.icms)+')';
-      document.getElementById('a-pc').textContent = fmtBRL.format(precoVenda*atualRate.pc) + ' ('+fmtPct(atualRate.pc)+')';
+      document.getElementById('a-icms').textContent = atualInvalid ? '—' : fmtBRL.format(precoVenda*atualRate.icms) + ' ('+fmtPct(atualRate.icms)+')';
+      document.getElementById('a-pc').textContent = atualInvalid ? '—' : fmtBRL.format(precoVenda*atualRate.pc) + ' ('+fmtPct(atualRate.pc)+')';
     }
 
     // ---- Reforma: preço base via taxas "por dentro" only, CBS/IBS somados "por fora" ----
     var denomR = 1 - reformRate.porDentro - margem;
+    var reformaInvalid = denomR <= 0;
     var precoBaseReforma = denomR > 0 ? custoFinal / denomR : 0;
     var cbsValor = precoBaseReforma * reformRate.cbs;
     var ibsValor = precoBaseReforma * reformRate.ibs;
@@ -900,14 +911,14 @@
     var rLucro = precoBaseReforma - custoFinal - impostosEmbutidos; // CBS/IBS is pass-through, doesn't erode margin when repassado
     var rMargem = precoBaseReforma > 0 ? rLucro / precoBaseReforma : 0;
 
-    document.getElementById('r-preco').textContent = fmtBRL.format(precoBaseReforma||0);
+    document.getElementById('r-preco').textContent = reformaInvalid ? '—' : fmtBRL.format(precoBaseReforma||0);
     document.getElementById('r-custo').textContent = fmtBRL.format(custoFinal);
-    document.getElementById('r-impostos').textContent = fmtBRL.format(impostosEmbutidos);
-    document.getElementById('r-porfora').textContent = '+ ' + fmtBRL.format(porForaValor);
-    document.getElementById('r-precofinal').textContent = fmtBRL.format(precoFinalReforma||0);
-    document.getElementById('r-lucro').textContent = fmtBRL.format(rLucro);
-    document.getElementById('r-lucro').className = 'lucro-val ' + (rLucro >= 0 ? 'good' : 'bad');
-    document.getElementById('r-margem').textContent = 'margem ' + fmtPct(rMargem) + ' sobre o preço base (antes do CBS/IBS)';
+    document.getElementById('r-impostos').textContent = reformaInvalid ? '—' : fmtBRL.format(impostosEmbutidos);
+    document.getElementById('r-porfora').textContent = reformaInvalid ? '—' : '+ ' + fmtBRL.format(porForaValor);
+    document.getElementById('r-precofinal').textContent = reformaInvalid ? '—' : fmtBRL.format(precoFinalReforma||0);
+    document.getElementById('r-lucro').textContent = reformaInvalid ? '—' : fmtBRL.format(rLucro);
+    document.getElementById('r-lucro').className = 'lucro-val ' + (reformaInvalid ? '' : (rLucro >= 0 ? 'good' : 'bad'));
+    document.getElementById('r-margem').textContent = reformaInvalid ? 'margem —' : 'margem ' + fmtPct(rMargem) + ' sobre o preço base (antes do CBS/IBS)';
 
     var isSimples = state.regime === 'simples';
     var isPadrao = isSimples && state.simplesMode === 'padrao';
@@ -925,13 +936,13 @@
     document.getElementById('poraforaNote').classList.toggle('hidden', isPadrao);
 
     if(isSimples){
-      document.getElementById('r-das').textContent = fmtBRL.format(precoBaseReforma*reformRate.das) + ' ('+fmtPct(reformRate.das)+')';
+      document.getElementById('r-das').textContent = reformaInvalid ? '—' : fmtBRL.format(precoBaseReforma*reformRate.das) + ' ('+fmtPct(reformRate.das)+')';
     }
     if(isGeral){
-      document.getElementById('r-icms').textContent = fmtBRL.format(precoBaseReforma*reformRate.icms) + ' ('+fmtPct(reformRate.icms)+')';
+      document.getElementById('r-icms').textContent = reformaInvalid ? '—' : fmtBRL.format(precoBaseReforma*reformRate.icms) + ' ('+fmtPct(reformRate.icms)+')';
       var pcEl = document.getElementById('r-pc');
       if(reformRate.pcApplies){
-        pcEl.textContent = fmtBRL.format(precoBaseReforma*atualRate.pc) + ' ('+fmtPct(atualRate.pc)+')';
+        pcEl.textContent = reformaInvalid ? '—' : fmtBRL.format(precoBaseReforma*atualRate.pc) + ' ('+fmtPct(atualRate.pc)+')';
         pcEl.classList.remove('na');
       } else {
         pcEl.textContent = 'Não aplicável';
@@ -939,8 +950,21 @@
       }
     }
     if(isGeral || isHibrido){
-      document.getElementById('r-cbs').textContent = fmtBRL.format(cbsValor) + ' ('+fmtPct(reformRate.cbs)+')';
-      document.getElementById('r-ibs').textContent = fmtBRL.format(ibsValor) + ' ('+fmtPct(reformRate.ibs)+')';
+      document.getElementById('r-cbs').textContent = reformaInvalid ? '—' : fmtBRL.format(cbsValor) + ' ('+fmtPct(reformRate.cbs)+')';
+      document.getElementById('r-ibs').textContent = reformaInvalid ? '—' : fmtBRL.format(ibsValor) + ' ('+fmtPct(reformRate.ibs)+')';
+    }
+
+    // ---- Margem inválida: avisa em vez de exibir números quebrados ----
+    var warnEl = document.getElementById('margemWarning');
+    if(atualInvalid || reformaInvalid){
+      var maxMargemAtual = Math.max(0, (1 - atualRate.total) * 100);
+      var maxMargemReforma = Math.max(0, (1 - reformRate.porDentro) * 100);
+      var limiteMax = atualInvalid && reformaInvalid ? Math.min(maxMargemAtual, maxMargemReforma) : (atualInvalid ? maxMargemAtual : maxMargemReforma);
+      var ladoTexto = atualInvalid && reformaInvalid ? 'nos dois cenários' : (atualInvalid ? 'no cenário atual' : 'no cenário com a reforma');
+      warnEl.textContent = 'Margem alta demais para a carga tributária informada ' + ladoTexto + ': com esses números, a margem máxima possível é de ' + limiteMax.toFixed(1).replace('.', ',') + '%. Reduza a margem ou revise as alíquotas para ver o resultado.';
+      warnEl.classList.remove('hidden');
+    } else {
+      warnEl.classList.add('hidden');
     }
 
     // ---- Impact reveal: the real-world question is what the client ends up paying ----
@@ -953,7 +977,12 @@
 
     var isEspecifico = state.ibsRegime === 'especifico' && (isGeral || isHibrido);
 
-    if(isEspecifico){
+    if(atualInvalid || reformaInvalid){
+      box.className = 'impact';
+      icon.textContent = '!';
+      big.textContent = 'Ajuste a margem para ver o impacto';
+      small.textContent = 'Veja o aviso acima — com a margem e as alíquotas informadas, o preço de venda não fecha.';
+    } else if(isEspecifico){
       box.className = 'impact';
       icon.textContent = '?';
       big.textContent = 'Seu setor tem regra própria — este simulador não calcula esse caso direito';
